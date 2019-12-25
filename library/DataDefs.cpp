@@ -42,6 +42,39 @@ distribution.
 
 using namespace DFHack;
 
+const char *DFHack::identity_type_str(const identity_type type) {
+    switch(type) {
+    case IDTYPE_GLOBAL:
+        return "global";
+    case IDTYPE_FUNCTION:
+        return "function";
+    case IDTYPE_PRIMITIVE:
+        return "primitive";
+    case IDTYPE_POINTER:
+        return "pointer";
+    case IDTYPE_CONTAINER:
+        return "container";
+    case IDTYPE_PTR_CONTAINER:
+        return "ptr_container";
+    case IDTYPE_BIT_CONTAINER:
+        return "bit_container";
+    case IDTYPE_BITFIELD:
+        return "bitfield";
+    case IDTYPE_ENUM:
+        return "enum";
+    case IDTYPE_STRUCT:
+        return "struct";
+    case IDTYPE_CLASS:
+        return "class";
+    case IDTYPE_BUFFER:
+        return "buffer";
+    case IDTYPE_STL_PTR_VECTOR:
+        return "stl_ptr_vector";
+    case IDTYPE_OPAQUE:
+        return "opaque";
+    }
+    return "ERROR_UNKNOWN_IDENTITY_TYPE";
+}
 
 void *type_identity::do_allocate_pod() {
     size_t sz = byte_size();
@@ -110,7 +143,7 @@ void compound_identity::doInit(Core *)
         top_scope.push_back(this);
 }
 
-std::string compound_identity::getFullName()
+std::string compound_identity::getFullName() const
 {
     if (scope_parent)
         return scope_parent->getFullName() + "." + getName();
@@ -133,8 +166,10 @@ void compound_identity::Init(Core *core)
 
 bitfield_identity::bitfield_identity(size_t size,
                                      compound_identity *scope_parent, const char *dfhack_name,
-                                     int num_bits, const bitfield_item_info *bits)
-    : compound_identity(size, NULL, scope_parent, dfhack_name), bits(bits), num_bits(num_bits)
+                                     int num_bits, const bitfield_item_info *bits,
+                                     const type_identity *_base_type)
+    : compound_identity(size, NULL, scope_parent, dfhack_name), bits(bits), num_bits(num_bits),
+      base_type{*_base_type}
 {
 }
 
@@ -171,9 +206,10 @@ enum_identity::ComplexData::ComplexData(std::initializer_list<int64_t> values)
 
 struct_identity::struct_identity(size_t size, TAllocateFn alloc,
                                  compound_identity *scope_parent, const char *dfhack_name,
-                                 struct_identity *parent, const struct_field_info *fields)
+                                 struct_identity *parent, const struct_field_info *fields,
+                                 bool is_u)
     : compound_identity(size, alloc, scope_parent, dfhack_name),
-      parent(parent), has_children(false), fields(fields)
+      parent(parent), has_children(false), fields(fields), is_union{is_u}
 {
 }
 
@@ -198,27 +234,27 @@ bool struct_identity::is_subclass(struct_identity *actual)
     return false;
 }
 
-std::string pointer_identity::getFullName()
+std::string pointer_identity::getFullName() const
 {
     return (target ? target->getFullName() : std::string("void")) + "*";
 }
 
-std::string container_identity::getFullName(type_identity *item)
+std::string container_identity::getFullName(type_identity *item) const
 {
     return "<" + (item ? item->getFullName() : std::string("void")) + ">";
 }
 
-std::string ptr_container_identity::getFullName(type_identity *item)
+std::string ptr_container_identity::getFullName(type_identity *item) const
 {
     return "<" + (item ? item->getFullName() : std::string("void")) + "*>";
 }
 
-std::string bit_container_identity::getFullName(type_identity *)
+std::string bit_container_identity::getFullName(type_identity *) const
 {
     return "<bool>";
 }
 
-std::string df::buffer_container_identity::getFullName(type_identity *item)
+std::string df::buffer_container_identity::getFullName(type_identity *item) const
 {
     return (item ? item->getFullName() : std::string("void")) +
            (size > 0 ? stl_sprintf("[%d]", size) : std::string("[]"));
@@ -226,9 +262,11 @@ std::string df::buffer_container_identity::getFullName(type_identity *item)
 
 virtual_identity::virtual_identity(size_t size, TAllocateFn alloc,
                                    const char *dfhack_name, const char *original_name,
-                                   virtual_identity *parent, const struct_field_info *fields)
+                                   virtual_identity *parent, const struct_field_info *fields,
+                                   const std::vector<std::vector<struct_field_info>> *oms,
+                                   const char **omn)
     : struct_identity(size, alloc, NULL, dfhack_name, parent, fields), original_name(original_name),
-      vtable_ptr(NULL)
+      vtable_ptr(NULL), own_method_signatures{oms}, own_method_names{omn}
 {
 }
 
