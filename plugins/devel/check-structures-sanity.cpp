@@ -6,6 +6,8 @@
 #include "LuaTools.h"
 #include "LuaWrapper.h"
 
+#include "df/large_integer.h"
+
 #if defined(WIN32) && defined(DFHACK64)
 #define _WIN32_WINNT 0x0501
 #define WINVER 0x0501
@@ -15,6 +17,7 @@
 #endif
 
 #include <deque>
+#include <inttypes.h>
 #include <set>
 #include <typeinfo>
 
@@ -47,6 +50,148 @@ DFhackCExport command_result plugin_init(color_ostream &, std::vector<PluginComm
         "by default, check-structures-sanity reports invalid pointers, vectors, strings, and vtables."
     ));
     return CR_OK;
+}
+
+static const char *const *get_enum_item_key(enum_identity *identity, int64_t value)
+{
+    size_t index;
+    if (auto cplx = identity->getComplex())
+    {
+        auto it = cplx->value_index_map.find(value);
+        if (it == cplx->value_index_map.cend())
+        {
+            return nullptr;
+        }
+        index = it->second;
+    }
+    else
+    {
+        if (value < identity->getFirstItem() || value > identity->getLastItem())
+        {
+            return nullptr;
+        }
+        index = value - identity->getFirstItem();
+    }
+
+    return &identity->getKeys()[index];
+}
+
+static const struct_field_info *find_union_tag(const struct_field_info *fields, const struct_field_info *union_field)
+{
+    if (union_field->mode != struct_field_info::SUBSTRUCT ||
+            !union_field->type ||
+            union_field->type->type() != IDTYPE_UNION)
+    {
+        // not a union
+        return nullptr;
+    }
+
+    const struct_field_info *tag_field = union_field + 1;
+
+    std::string name(union_field->name);
+    if (name.length() >= 4 && name.substr(name.length() - 4) == "data")
+    {
+        name.erase(name.length() - 4, 4);
+        name += "type";
+
+        if (tag_field->mode != struct_field_info::END && tag_field->name == name)
+        {
+            // fast path; we already have the correct field
+        }
+        else
+        {
+            for (auto field = fields; field->mode != struct_field_info::END; field++)
+            {
+                if (field->name == name)
+                {
+                    tag_field = field;
+                    break;
+                }
+            }
+        }
+    }
+    else if (name.length() > 7 && name.substr(name.length() - 7) == "_target" && fields != union_field && (union_field - 1)->name == name.substr(0, name.length() - 7))
+    {
+        tag_field = union_field - 1;
+    }
+
+    if (tag_field->mode != struct_field_info::PRIMITIVE ||
+            !tag_field->type ||
+            tag_field->type->type() != IDTYPE_ENUM)
+    {
+        // no tag
+        return nullptr;
+    }
+
+    return tag_field;
+}
+
+static const struct_field_info *find_union_vector_tag_vector(const struct_field_info *fields, const struct_field_info *union_field)
+{
+    if (union_field->mode != struct_field_info::CONTAINER ||
+            !union_field->type ||
+            union_field->type->type() != IDTYPE_CONTAINER)
+    {
+        // not a vector
+        return nullptr;
+    }
+
+    auto container_type = static_cast<container_identity *>(union_field->type);
+    if (container_type->getFullName(nullptr) != "vector<void>" ||
+            !container_type->getItemType() ||
+            container_type->getItemType()->type() != IDTYPE_UNION)
+    {
+        // not a union
+        return nullptr;
+    }
+
+    const struct_field_info *tag_field = union_field + 1;
+
+    std::string name(union_field->name);
+    if (name.length() >= 4 && name.substr(name.length() - 4) == "data")
+    {
+        name.erase(name.length() - 4, 4);
+        name += "type";
+
+        if (tag_field->mode != struct_field_info::END && tag_field->name == name)
+        {
+            // fast path; we already have the correct field
+        }
+        else
+        {
+            for (auto field = fields; field->mode != struct_field_info::END; field++)
+            {
+                if (field->name == name)
+                {
+                    tag_field = field;
+                    break;
+                }
+            }
+        }
+    }
+    else if (name.length() > 7 && name.substr(name.length() - 7) == "_target" && fields != union_field && (union_field - 1)->name == name.substr(0, name.length() - 7))
+    {
+        tag_field = union_field - 1;
+    }
+
+    if (tag_field->mode != struct_field_info::CONTAINER ||
+            !tag_field->type ||
+            tag_field->type->type() != IDTYPE_CONTAINER)
+    {
+        // no tag vector
+        return nullptr;
+    }
+
+    auto tag_container_type = static_cast<container_identity *>(tag_field->type);
+    if (tag_container_type->getFullName(nullptr) != "vector<void>" ||
+            !tag_container_type->getItemType() ||
+            tag_container_type->getItemType()->type() != IDTYPE_ENUM)
+    {
+        // not an enum
+        return nullptr;
+    }
+
+    return tag_field;
 }
 
 struct ToCheck
@@ -88,19 +233,27 @@ public:
 private:
     bool ok;
 
+#ifndef WIN32
+    // this function doesn't make sense on windows, where std::string is not pointer-sized.
+    const std::string *check_possible_stl_string_pointer(const void *const*);
+#endif
     bool check_access(const ToCheck &, void *, type_identity *);
     bool check_access(const ToCheck &, void *, type_identity *, size_t);
     bool check_vtable(const ToCheck &, void *, type_identity *);
     void queue_field(ToCheck &&, const struct_field_info *);
     void queue_static_array(const ToCheck &, void *, type_identity *, size_t, bool = false, enum_identity * = nullptr);
-    void check_dispatch(const ToCheck &);
+    bool maybe_queue_union(const ToCheck &, const struct_field_info *, const struct_field_info *);
+    void queue_union(const ToCheck &, const ToCheck &);
+    void queue_union_vector(const ToCheck &, const ToCheck &);
+    void check_dispatch(ToCheck &);
     void check_global(const ToCheck &);
     void check_primitive(const ToCheck &);
     void check_stl_string(const ToCheck &);
     void check_pointer(const ToCheck &);
     void check_bitfield(const ToCheck &);
-    void check_enum(const ToCheck &);
+    int64_t check_enum(const ToCheck &);
     void check_container(const ToCheck &);
+    size_t check_vector_size(const ToCheck &, size_t);
     void check_vector(const ToCheck &, type_identity *, bool);
     void check_deque(const ToCheck &, type_identity *);
     void check_dfarray(const ToCheck &, type_identity *);
@@ -139,7 +292,7 @@ static command_result command(color_ostream & out, std::vector<std::string> & pa
     if (parameters.empty())
     {
         ToCheck global;
-        global.path.push_back("df::global::");
+        global.path.push_back("df.global.");
         global.ptr = nullptr;
         global.identity = &df::global::_identity;
 
@@ -165,12 +318,14 @@ static command_result command(color_ostream & out, std::vector<std::string> & pa
 
         ToCheck ref;
         ref.path.push_back(parameters.at(0));
+        ref.path.push_back(""); // tell check_struct that it is a pointer
         ref.ptr = get_object_ref(State, -1);
         lua_getfield(State, -1, "_type");
         lua_getfield(State, -1, "_identity");
         ref.identity = reinterpret_cast<type_identity *>(lua_touserdata(State, -1));
         if (!ref.identity)
         {
+            out.printerr("could not determine type identity\n");
             return CR_FAILURE;
         }
 
@@ -236,6 +391,62 @@ bool Checker::check()
     } while (false)
 
 #define PTR_ADD(base, offset) (reinterpret_cast<void *>(reinterpret_cast<uintptr_t>((base)) + static_cast<ptrdiff_t>((offset))))
+
+#ifndef WIN32
+const std::string *Checker::check_possible_stl_string_pointer(const void *const*base)
+{
+    std::string empty_string;
+    if (*base == *reinterpret_cast<void **>(&empty_string))
+    {
+        return reinterpret_cast<const std::string *>(base);
+    }
+
+    const struct string_data_inner
+    {
+        size_t length;
+        size_t capacity;
+        int32_t refcount;
+    } *str_data = static_cast<const string_data_inner *>(*base) - 1;
+
+    uint32_t tag = *reinterpret_cast<const uint32_t *>(PTR_ADD(str_data, -8));
+    if (tag == 0xdfdf4ac8)
+    {
+        size_t allocated_size = *reinterpret_cast<const size_t *>(PTR_ADD(str_data, -16));
+        size_t expected_size = sizeof(*str_data) + str_data->capacity + 1;
+
+        if (allocated_size != expected_size)
+        {
+            return nullptr;
+        }
+    }
+    else
+    {
+        return nullptr;
+    }
+
+    if (str_data->capacity < str_data->length)
+    {
+        return nullptr;
+    }
+
+    const char *ptr = reinterpret_cast<const char *>(*base);
+    for (size_t i = 0; i < str_data->length; i++)
+    {
+        if (!*ptr++)
+        {
+            return nullptr;
+        }
+    }
+
+    if (*ptr++)
+    {
+        return nullptr;
+    }
+
+    return reinterpret_cast<const std::string *>(base);
+}
+#endif
+
 
 bool Checker::check_access(const ToCheck & item, void *base, type_identity *identity)
 {
@@ -385,6 +596,7 @@ void Checker::queue_field(ToCheck && item, const struct_field_info *field)
             // TODO: check static strings?
             break;
         case struct_field_info::POINTER:
+            // TODO: flags inside field->count
             item.temp_identity = std::unique_ptr<df::pointer_identity>(new df::pointer_identity(field->type));
             item.identity = item.temp_identity.get();
             queue.push_back(std::move(item));
@@ -419,19 +631,8 @@ void Checker::queue_static_array(const ToCheck & array, void *base, type_identit
         ToCheck item(array, i, base, type);
         if (ienum)
         {
-            const char *name = nullptr;
-            if (auto cplx = ienum->getComplex())
-            {
-                auto it = cplx->value_index_map.find(int64_t(i));
-                if (it != cplx->value_index_map.end())
-                {
-                    name = ienum->getKeys()[it->second];
-                }
-            }
-            else if (int64_t(i) >= ienum->getFirstItem() && int64_t(i) <= ienum->getLastItem())
-            {
-                name = ienum->getKeys()[int64_t(i) - ienum->getFirstItem()];
-            }
+            auto pname = get_enum_item_key(ienum, int64_t(i));
+            auto name = pname ? *pname : nullptr;
 
             std::ostringstream str;
             str << "[" << ienum->getFullName() << "::";
@@ -456,23 +657,193 @@ void Checker::queue_static_array(const ToCheck & array, void *base, type_identit
     }
 }
 
-void Checker::check_dispatch(const ToCheck & item)
+bool Checker::maybe_queue_union(const ToCheck & item, const struct_field_info *fields, const struct_field_info *union_field)
 {
-    if (!item.identity)
+    auto tag_field = find_union_tag(fields, union_field);
+    if (tag_field)
+    {
+        ToCheck union_item(item, "." + std::string(union_field->name), PTR_ADD(item.ptr, union_field->offset), union_field->type);
+        ToCheck tag_item(item, "." + std::string(tag_field->name), PTR_ADD(item.ptr, tag_field->offset), tag_field->type);
+        queue_union(union_item, tag_item);
+
+        return true;
+    }
+
+    tag_field = find_union_vector_tag_vector(fields, union_field);
+    if (tag_field)
+    {
+        ToCheck union_vector_item(item, "." + std::string(union_field->name), PTR_ADD(item.ptr, union_field->offset), union_field->type);
+        ToCheck tag_vector_item(item, "." + std::string(tag_field->name), PTR_ADD(item.ptr, tag_field->offset), tag_field->type);
+
+        queue_union_vector(union_vector_item, tag_vector_item);
+
+        return true;
+    }
+
+    return false;
+}
+
+void Checker::queue_union(const ToCheck & item, const ToCheck & tag_item)
+{
+    auto union_type = static_cast<union_identity *>(item.identity);
+    auto tag_type = static_cast<enum_identity *>(tag_item.identity);
+
+    int64_t tag_value = check_enum(tag_item);
+
+    auto ptag_key = get_enum_item_key(tag_type, tag_value);
+    auto tag_key = ptag_key ? *ptag_key : nullptr;
+    if (!ptag_key)
+    {
+        FAIL("tagged union tag (" << join_strings("", tag_item.path) << ") out of range (" << tag_value << ")");
+    }
+    else if (!tag_key)
+    {
+        FAIL("tagged union tag (" << join_strings("", tag_item.path) << ") unnamed (" << tag_value << ")");
+    }
+
+    const struct_field_info *item_field = nullptr;
+    if (tag_key)
+    {
+        for (auto field = union_type->getFields(); field->mode != struct_field_info::END; field++)
+        {
+            if (!strcmp(tag_key, field->name))
+            {
+                item_field = field;
+                break;
+            }
+        }
+    }
+
+    if (item_field)
+    {
+        // good to go
+        ToCheck tagged_union_item(item, "." + std::string(item_field->name), item.ptr, item_field->type);
+        queue_field(std::move(tagged_union_item), item_field);
+        return;
+    }
+
+    // if it's all uninitialized, ignore it
+    uint8_t uninit_value = *reinterpret_cast<const uint8_t *>(item.ptr);
+    bool all_uninitialized = uninit_value == 0 || uninit_value == 0xd2;
+    if (all_uninitialized)
+    {
+        for (size_t offset = 0; offset < union_type->byte_size(); offset++)
+        {
+            if (*reinterpret_cast<const uint8_t *>(PTR_ADD(item.ptr, offset)) != uninit_value)
+            {
+                all_uninitialized = false;
+                break;
+            }
+        }
+    }
+    if (all_uninitialized)
     {
         return;
     }
 
+    // if we don't know the key, we already warned above
+    if (tag_key)
+    {
+        FAIL("tagged union (" << join_strings("", tag_item.path) << ") missing member for tag " << tag_key << " (" << tag_value << ")");
+    }
+
+    // if there's a pointer (we only check the first field for now)
+    // assume this could also be a pointer
+    if (union_type->getFields()->mode == struct_field_info::POINTER)
+    {
+        ToCheck untagged_union_item(item, tag_key ? "." + std::string(tag_key) : stl_sprintf(".?%" PRId64 "?", tag_value), item.ptr, df::identity_traits<void *>::get());
+        queue.push_back(std::move(untagged_union_item));
+    }
+}
+
+void Checker::queue_union_vector(const ToCheck & item, const ToCheck & tag_item)
+{
+    auto union_type = static_cast<union_identity *>(static_cast<container_identity *>(item.identity)->getItemType());
+    auto tag_type = static_cast<enum_identity *>(static_cast<container_identity *>(tag_item.identity)->getItemType());
+
+    auto union_count = check_vector_size(item, union_type->byte_size());
+    auto tag_count = check_vector_size(tag_item, tag_type->byte_size());
+
+    if (union_count != tag_count)
+    {
+        FAIL("tagged union vector size (" << union_count << ") does not match tag vector (" << join_strings("", tag_item.path) << ") size (" << tag_count << ")");
+    }
+
+    auto union_base = *reinterpret_cast<void **>(item.ptr);
+    auto tag_base = *reinterpret_cast<void **>(tag_item.ptr);
+
+    auto count = std::min(union_count, tag_count);
+    for (size_t i = 0; i < count; i++, union_base = PTR_ADD(union_base, union_type->byte_size()), tag_base = PTR_ADD(tag_base, tag_type->byte_size()))
+    {
+        ToCheck union_item(item, i, union_base, union_type);
+        ToCheck tag(tag_item, i, tag_base, tag_type);
+        queue_union(union_item, tag);
+    }
+}
+
+void Checker::check_dispatch(ToCheck & item)
+{
     if (reinterpret_cast<uintptr_t>(item.ptr) == UNINIT_PTR)
     {
         // allow uninitialized raw pointers
         return;
     }
 
+    if (!item.identity)
+    {
+        // warn about bad pointers
+        if (!check_access(item, item.ptr, df::identity_traits<void *>::get(), 1))
+        {
+            return;
+        }
+
+        if (sizes)
+        {
+            uint32_t tag = *reinterpret_cast<uint32_t *>(PTR_ADD(item.ptr, -8));
+            if (tag == 0xdfdf4ac8)
+            {
+                size_t allocated_size = *reinterpret_cast<size_t *>(PTR_ADD(item.ptr, -16));
+
+                FAIL("pointer to a block of " << allocated_size << " bytes of allocated memory");
+
+                // check recursively if it might be a valid pointer
+                if (allocated_size == sizeof(void *))
+                {
+                    item.path.push_back(".?ptr?");
+                    item.path.push_back("");
+                    item.identity = df::identity_traits<void *>::get();
+                }
+            }
+#ifndef WIN32
+            else if (auto str = check_possible_stl_string_pointer(&item.ptr))
+            {
+                FAIL("untyped pointer is actually stl-string with value \"" << *str << "\" (length " << str->length() << ")");
+            }
+#endif
+            else
+            {
+                FAIL("pointer to memory with no size information");
+            }
+        }
+
+        // could have been set above
+        if (!item.identity)
+        {
+            return;
+        }
+    }
+
     if (!check_access(item, item.ptr, item.identity) && item.identity->type() != IDTYPE_GLOBAL)
     {
         return;
     }
+
+    // special case for large_integer weirdness
+    if (item.identity == df::identity_traits<df::large_integer>::get())
+    {
+        item.identity = df::identity_traits<int64_t>::get();
+    }
+
 
     switch (item.identity->type())
     {
@@ -507,6 +878,10 @@ void Checker::check_dispatch(const ToCheck & item)
         case IDTYPE_ENUM:
             check_enum(item);
             break;
+        case IDTYPE_UNION:
+            FAIL("untagged union");
+            check_struct(item);
+            break;
         case IDTYPE_STRUCT:
             check_struct(item);
             break;
@@ -526,6 +901,7 @@ void Checker::check_global(const ToCheck & globals)
     for (auto field = identity->getFields(); field->mode != struct_field_info::END; field++)
     {
         ToCheck item(globals, field->name, nullptr, field->type);
+        item.path.push_back(""); // tell check_struct that this is a pointer
 
         auto base = reinterpret_cast<void **>(field->offset);
         if (!check_access(item, base, df::identity_traits<void *>::get()))
@@ -549,6 +925,16 @@ void Checker::check_primitive(const ToCheck & item)
     if (item.identity->getFullName() == "string")
     {
         check_stl_string(item);
+        return;
+    }
+
+    if (item.identity->getFullName() == "bool")
+    {
+        auto value = *reinterpret_cast<uint8_t *>(item.ptr);
+        if (value > 1 && value != 0xd2)
+        {
+            FAIL("invalid boolean value " << stl_sprintf("%d (0x%02x)", value, value));
+        }
         return;
     }
 
@@ -585,7 +971,7 @@ void Checker::check_stl_string(const ToCheck & item)
         {
             size_t length;
             size_t capacity;
-            size_t refcount;
+            int32_t refcount;
         } *ptr;
     };
 #endif
@@ -605,6 +991,8 @@ void Checker::check_stl_string(const ToCheck & item)
 #else
     if (!check_access(item, string->ptr, item.identity, 1))
     {
+        // nullptr is NOT okay here
+        FAIL("invalid string pointer " << stl_sprintf("%p", string->ptr));
         return;
     }
     if (!check_access(item, string->ptr - 1, item.identity, sizeof(*string->ptr)))
@@ -620,7 +1008,7 @@ void Checker::check_stl_string(const ToCheck & item)
     {
         FAIL("string length is negative (" << length << ")");
     }
-    if (capacity < 0)
+    else if (capacity < 0)
     {
         FAIL("string capacity is negative (" << capacity << ")");
     }
@@ -629,22 +1017,48 @@ void Checker::check_stl_string(const ToCheck & item)
         FAIL("string capacity (" << capacity << ") is less than length (" << length << ")");
     }
 
+#ifndef WIN32
+    const std::string empty_string;
+    auto empty_string_data = reinterpret_cast<const string_data *>(&empty_string);
+    if (sizes && string->ptr != empty_string_data->ptr)
+    {
+        uint32_t tag = *reinterpret_cast<uint32_t *>(PTR_ADD(string->ptr - 1, -8));
+        if (tag == 0xdfdf4ac8)
+        {
+            size_t allocated_size = *reinterpret_cast<size_t *>(PTR_ADD(string->ptr - 1, -16));
+            size_t expected_size = sizeof(*string->ptr) + capacity + 1;
+
+            if (allocated_size != expected_size)
+            {
+                FAIL("allocated string data size (" << allocated_size << ") does not match expected size (" << expected_size << ")");
+            }
+        }
+        else
+        {
+            UNEXPECTED;
+        }
+    }
+#endif
+
     check_access(item, start, item.identity, capacity);
 }
 
 void Checker::check_pointer(const ToCheck & item)
 {
-    if (!check_access(item, item.ptr, item.identity))
-    {
-        return;
-    }
-
     if (!seen_addr.insert(item.ptr).second)
     {
         return;
     }
 
-    queue.push_back(ToCheck(item, "", *reinterpret_cast<void **>(item.ptr), static_cast<pointer_identity *>(item.identity)->getTarget()));
+    auto base = *reinterpret_cast<void **>(item.ptr);
+    auto base_int = uintptr_t(base);
+    if (base_int != UNINIT_PTR && base_int % alignof(void *) != 0)
+    {
+        FAIL("unaligned pointer " << stl_sprintf("%p", base));
+    }
+
+    auto target_identity = static_cast<pointer_identity *>(item.identity)->getTarget();
+    queue.push_back(ToCheck(item, "", base, target_identity));
 }
 
 void Checker::check_bitfield(const ToCheck & item)
@@ -684,13 +1098,8 @@ void Checker::check_bitfield(const ToCheck & item)
     }
 }
 
-void Checker::check_enum(const ToCheck & item)
+int64_t Checker::check_enum(const ToCheck & item)
 {
-    if (!enums)
-    {
-        return;
-    }
-
     auto identity = static_cast<enum_identity *>(item.identity);
 
     int64_t value;
@@ -719,34 +1128,32 @@ void Checker::check_enum(const ToCheck & item)
             break;
         default:
             UNEXPECTED;
-            return;
+            return -1;
     }
 
-    size_t index;
-    if (auto cplx = identity->getComplex())
+    if (!enums)
     {
-        auto it = cplx->value_index_map.find(value);
-        if (it == cplx->value_index_map.cend())
+        return value;
+    }
+
+    auto key = get_enum_item_key(identity, value);
+    if (!key)
+    {
+        if (identity->getComplex())
         {
             FAIL("enum value (" << value << ") is not defined (complex enum)");
-            return;
         }
-        index = it->second;
-    }
-    else
-    {
-        if (value < identity->getFirstItem() || value > identity->getLastItem())
+        else
         {
             FAIL("enum value (" << value << ") outside of defined range (" << identity->getFirstItem() << " to " << identity->getLastItem() << ")");
-            return;
         }
-        index = value - identity->getFirstItem();
     }
-
-    if (!identity->getKeys()[index])
+    else if (!*key)
     {
         FAIL("enum value (" << value << ") is unnamed");
     }
+
+    return value;
 }
 
 void Checker::check_container(const ToCheck & item)
@@ -790,7 +1197,7 @@ void Checker::check_container(const ToCheck & item)
     }
 }
 
-void Checker::check_vector(const ToCheck & item, type_identity *item_identity, bool pointer)
+size_t Checker::check_vector_size(const ToCheck & item, size_t item_size)
 {
     struct vector_data
     {
@@ -802,12 +1209,10 @@ void Checker::check_vector(const ToCheck & item, type_identity *item_identity, b
     if (item.identity->byte_size() != sizeof(vector_data))
     {
         UNEXPECTED;
-        return;
+        return 0;
     }
 
     vector_data vector = *reinterpret_cast<vector_data *>(item.ptr);
-
-    size_t item_size = pointer ? sizeof(void *) : item_identity->byte_size();
 
     ptrdiff_t length = vector.finish - vector.start;
     ptrdiff_t capacity = vector.end_of_storage - vector.start;
@@ -829,10 +1234,9 @@ void Checker::check_vector(const ToCheck & item, type_identity *item_identity, b
         FAIL("vector capacity (" << (capacity / ptrdiff_t(item_size)) << ") is less than its length (" << (length / ptrdiff_t(item_size)) << ")");
     }
 
-    if (!item_identity && pointer)
+    if (!item_size)
     {
-        // non-identified vector type in structures
-        return;
+        return 0;
     }
 
     size_t ulength = size_t(length);
@@ -848,17 +1252,41 @@ void Checker::check_vector(const ToCheck & item, type_identity *item_identity, b
         FAIL("vector capacity is non-integer (" << (ucapacity / item_size) << " items plus " << (ucapacity % item_size) << " bytes)");
     }
 
-    if (item.path.back() == ".bad")
+    if (local_ok && capacity && !vector.start)
     {
-        // don't check contents
-        local_ok = false;
+        FAIL("vector has null pointer but capacity " << (capacity / item_size));
+        return 0;
     }
 
-    if (local_ok && check_access(item, reinterpret_cast<void *>(vector.start), item.identity, length) && item_identity)
+    if (!check_access(item, reinterpret_cast<void *>(vector.start), item.identity, capacity))
     {
-        auto ienum = static_cast<enum_identity *>(static_cast<container_identity *>(item.identity)->getIndexEnumType());
-        queue_static_array(item, reinterpret_cast<void *>(vector.start), item_identity, ulength / item_size, pointer, ienum);
+        return 0;
     }
+
+    return local_ok ? ulength / item_size : 0;
+}
+
+void Checker::check_vector(const ToCheck & item, type_identity *item_identity, bool pointer)
+{
+    size_t item_size = pointer ? sizeof(void *) : item_identity->byte_size();
+
+    if (!item_identity && pointer && !sizes)
+    {
+        // non-identified vector type in structures
+        item_size = 0;
+    }
+
+    size_t count = check_vector_size(item, item_size);
+
+    if (item.path.back() == ".bad" || count == 0)
+    {
+        // don't check contents
+        return;
+    }
+
+    void *start = *reinterpret_cast<void **>(item.ptr);
+    auto ienum = static_cast<enum_identity *>(static_cast<container_identity *>(item.identity)->getIndexEnumType());
+    queue_static_array(item, start, item_identity, count, pointer, ienum);
 }
 
 void Checker::check_deque(const ToCheck & item, type_identity *item_identity)
@@ -925,7 +1353,8 @@ void Checker::check_struct(const ToCheck & item)
 {
     bool is_pointer = item.path.back().empty();
     bool is_virtual = !item.path.back().empty() && item.path.back().at(0) == '<';
-    if (sizes && uintptr_t(item.ptr) % 32 == 16 && (is_pointer || is_virtual))
+    bool is_virtual_pointer = is_virtual && item.path.size() >= 2 && item.path.at(item.path.size() - 2).empty();
+    if (sizes && uintptr_t(item.ptr) % 32 == 16 && (is_pointer || is_virtual_pointer))
     {
         uint32_t tag = *reinterpret_cast<uint32_t *>(PTR_ADD(item.ptr, -8));
         if (tag == 0xdfdf4ac8)
@@ -937,6 +1366,10 @@ void Checker::check_struct(const ToCheck & item)
             {
                 FAIL("allocated structure size (" << allocated_size << ") does not match expected size (" << expected_size << ")");
             }
+        }
+        else
+        {
+            UNEXPECTED;
         }
     }
 
@@ -950,6 +1383,11 @@ void Checker::check_struct(const ToCheck & item)
 
         for (auto field = fields; field->mode != struct_field_info::END; field++)
         {
+            if (maybe_queue_union(item, fields, field))
+            {
+                continue;
+            }
+
             ToCheck child(item, std::string(".") + field->name, PTR_ADD(item.ptr, field->offset), field->type);
 
             queue_field(std::move(child), field);

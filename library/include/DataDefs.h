@@ -64,7 +64,13 @@ namespace DFHack
         IDTYPE_CLASS,
         IDTYPE_BUFFER,
         IDTYPE_STL_PTR_VECTOR,
-        IDTYPE_OPAQUE
+        IDTYPE_OPAQUE,
+        IDTYPE_UNION
+    };
+
+    enum pointer_identity_flags {
+        PTRFLAG_IS_ARRAY = 1,
+        PTRFLAG_HAS_BAD_POINTERS = 2,
     };
 
     typedef void *(*TAllocateFn)(void*,const void*);
@@ -279,8 +285,8 @@ namespace DFHack
 
     public:
         struct_identity(size_t size, TAllocateFn alloc,
-                        compound_identity *scope_parent, const char *dfhack_name,
-                        struct_identity *parent, const struct_field_info *fields);
+                compound_identity *scope_parent, const char *dfhack_name,
+                struct_identity *parent, const struct_field_info *fields);
 
         virtual identity_type type() { return IDTYPE_STRUCT; }
 
@@ -303,6 +309,15 @@ namespace DFHack
         virtual identity_type type() { return IDTYPE_GLOBAL; }
 
         virtual void build_metatable(lua_State *state);
+    };
+
+    class DFHACK_EXPORT union_identity : public struct_identity {
+    public:
+        union_identity(size_t size, TAllocateFn alloc,
+                compound_identity *scope_parent, const char *dfhack_name,
+                struct_identity *parent, const struct_field_info *fields);
+
+        virtual identity_type type() { return IDTYPE_UNION; }
     };
 
 #ifdef _MSC_VER
@@ -435,6 +450,7 @@ namespace df
     using DFHack::virtual_class;
     using DFHack::global_identity;
     using DFHack::struct_identity;
+    using DFHack::union_identity;
     using DFHack::struct_field_info;
     using DFHack::bitfield_item_info;
     using DFHack::bitfield_identity;
@@ -484,7 +500,7 @@ namespace df
         template<class T>
         enum_field(enum_field<EnumType,T> ev) : value(IntType(ev.value)) {}
 
-        operator EnumType () { return EnumType(value); }
+        operator EnumType () const { return EnumType(value); }
         enum_field<EnumType,IntType> &operator=(EnumType ev) {
             value = IntType(ev); return *this;
         }
