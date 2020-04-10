@@ -15,6 +15,7 @@ addons:
       - libxml-libxslt-perl
       - ninja-build
       - zlib1g-dev
+      - astyle
 matrix:
   include:
     - env: GCC_VERSION=4.8
@@ -38,6 +39,7 @@ script:
 - sh travis/git-info.sh
 - sphinx-build -qW -j3 . docs/html
 - python travis/pr-check-base.py
+- travis/astyle-check.sh
 - python travis/lint.py
 - python travis/authors-rst.py
 - python travis/script-docs.py
