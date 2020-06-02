@@ -33,10 +33,55 @@ changelog.txt uses a syntax similar to RST, with a few special sequences:
 
 ================================================================================
 ======== IMPORTANT: rename this, and add a new "future" section, BEFORE ========
-======== making a new DFHack release!                                   ========
+======== making a new DFHack release, even if the only changes made     ========
+======== were in submodules with their own changelogs!                  ========
 ================================================================================
 
 # Future
+
+# 0.47.04-r1
+
+## Fixes
+- Fixed translation of certain types of in-game names
+- Fixed a crash in ``find()`` for some types when no world is loaded
+- `autogems`: fixed an issue with binned gems being ignored in linked stockpiles
+- `stocks`: fixed display of book titles
+- `tweak` embark-profile-name: fixed handling of the native shift+space key
+
+## Misc Improvements
+- ``dfhack.init-example``: enabled `autodump`
+- `getplants`: added switches for designations for farming seeds and for max number designated per plant
+- `manipulator`: added intrigue to displayed skills
+- `search`: added support for the fortress mode justice screen
+
+## API
+- Added ``Items::getBookTitle`` to get titles of books. Catches titles buried in improvements, unlike getDescription.
+
+## Lua
+- ``pairs()`` now returns available class methods for DF types
+
+# 0.47.04-beta1
+
+## Fixes
+- Fixed a crash when starting DFHack in headless mode with no terminal
+
+## Misc Improvements
+- Added "bit" suffix to downloads (e.g. 64-bit)
+- Tests:
+    - moved from DF folder to hack/scripts folder, and disabled installation by default
+    - made test runner script more flexible
+- `dfhack-run`: added color output support
+- `embark-assistant`:
+    - updated embark aquifer info to show all aquifer kinds present
+    - added neighbor display, including kobolds (SKULKING) and necro tower count
+    - updated aquifer search criteria to handle the new variation
+    - added search criteria for embark initial tree cover
+    - added search criteria for necro tower count, neighbor civ count, and specific neighbors. Should handle additional entities, but not tested
+
+## Internals
+- Improved support for tagged unions, allowing tools to access union fields more safely
+- Added separate changelogs in the scripts and df-structures repos
+- Moved ``reversing`` scripts to df_misc repo
 
 # 0.47.03-beta1
 
@@ -80,6 +125,8 @@ changelog.txt uses a syntax similar to RST, with a few special sequences:
 - ``building_type``: added ``OfferingPlace``
 - ``creature_interaction_effect``: added subclasses new to 0.47
 - ``creature_raw_flags``: identified several more items
+- ``creature_raw_flags``: renamed many items to match DF names
+- ``caste_raw_flags``: renamed many items to match DF names
 - ``d_init``: added settings new to 0.47
 - ``entity_name_type``: added ``MERCHANT_COMPANY``, ``CRAFT_GUILD``
 - ``entity_position_responsibility``: added values new to 0.47
