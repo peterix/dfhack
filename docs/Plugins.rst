@@ -1,3 +1,5 @@
+.. _plugins-index:
+
 ##############
 DFHack Plugins
 ##############
@@ -9,8 +11,9 @@ game subsystems or the entire renderer.
 Most commands offered by plugins are listed here,
 hopefully organised in a way you will find useful.
 
-.. contents::
-   :depth: 3
+.. contents:: Contents
+  :local:
+  :depth: 2
 
 ===============================
 Data inspection and visualizers
@@ -56,6 +59,11 @@ remotefortressreader
 An in-development plugin for realtime fortress visualisation.
 See :forums:`Armok Vision <146473>`.
 
+.. _isoworldremote:
+
+isoworldremote
+==============
+A plugin that implements a `remote API <remote>` used by Isoworld.
 
 .. _cursecheck:
 
@@ -183,7 +191,7 @@ Usage and related commands:
 :revflood:      Hide everything, then reveal tiles with a path to the cursor
                 (useful to make walled-off rooms vanish)
 :revforget:     Discard info about what was visible before revealing the map.
-                Only useful where (eg) you abandoned with the fort revealed
+                Only useful where (e.g.) you abandoned with the fort revealed
                 and no longer want the data.
 
 .. _showmood:
@@ -332,6 +340,7 @@ Subcommands that persist until disabled or DF quits:
 :stone-status-all:      Adds an option to toggle the economic status of all stones
 :title-start-rename:    Adds a safe rename option to the title screen "Start Playing" menu
 :tradereq-pet-gender:   Displays pet genders on the trade request screen
+:reaction-gloves:       Fixes reactions to produce gloves in sets with correct handedness (:bug:`6273`)
 
 .. _fix-armory:
 
@@ -728,7 +737,7 @@ by moving the view manually.
 
 mousequery
 ==========
-Adds mouse controls to the DF interface, eg click-and-drag designations.
+Adds mouse controls to the DF interface, e.g. click-and-drag designations.
 
 Options:
 
@@ -831,10 +840,10 @@ See `gui/stockpiles` for an in-game interface.
 
 :savestock:     Saves the currently highlighted stockpile's settings to a file in your Dwarf
                 Fortress folder. This file can be used to copy settings between game saves or
-                players.  eg:  ``savestock food_settings.dfstock``
+                players.  e.g.:  ``savestock food_settings.dfstock``
 
 :loadstock:     Loads a saved stockpile settings file and applies it to the currently selected
-                stockpile.  eg:  ``loadstock food_settings.dfstock``
+                stockpile.  e.g.:  ``loadstock food_settings.dfstock``
 
 To use savestock and loadstock, use the :kbd:`q` command to highlight a stockpile.
 Then run savestock giving it a descriptive filename. Then, in a different (or
@@ -2356,10 +2365,14 @@ dfhack command line and can't be used from a hotkey. Settings will be remembered
 as long as dfhack runs. Intended for use in combination with the command
 ``liquids-here`` (which can be bound to a hotkey).  See also :issue:`80`.
 
-.. note::
+.. warning::
 
     Spawning and deleting liquids can mess up pathing data and
     temperatures (creating heat traps). You've been warned.
+
+.. note::
+
+    `gui/liquids` is an in-game UI for this script.
 
 Settings will be remembered until you quit DF. You can call `liquids-here` to execute
 the last configured action, which is useful in combination with keybindings.
