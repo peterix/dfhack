@@ -64,10 +64,11 @@ DFhackCExport command_result plugin_init ( color_ostream &out, std::vector <Plug
 {
     onupdate_active = 0;
 
-    // fail silently instead of spamming the console with 'failed to initialize'
-    // if libruby is not present, the error is still logged in stderr.log
     if (!df_loadruby())
-        return CR_OK;
+    {
+        out.printerr("df_loadruby failed - see stderr.log for details\n");
+        return CR_FAILURE;
+    }
 
     // the ruby thread sleeps trying to lock this
     // when it gets it, it runs according to r_type
@@ -306,7 +307,8 @@ ID (*rb_intern)(const char*);
 VALUE (*rb_funcall)(VALUE, ID, int, ...);
 VALUE (*rb_define_module)(const char*);
 void (*rb_define_singleton_method)(VALUE, const char*, VALUE(*)(...), int);
-VALUE (*rb_gv_get)(const char*);
+VALUE (*rb_errinfo)(void);
+void (*rb_set_errinfo)(VALUE);
 VALUE (*rb_str_new)(const char*, long);
 char* (*rb_string_value_ptr)(VALUE*);
 VALUE (*rb_eval_string_protect)(const char*, int*);
@@ -350,7 +352,10 @@ static int df_loadruby(void)
 
     // ruby_sysinit is optional (ruby1.9 only)
     ruby_sysinit = (decltype(ruby_sysinit))LookupPlugin(libruby_handle, "ruby_sysinit");
-#define rbloadsyma(s,a) if (!(s = (decltype(s))LookupPlugin(libruby_handle, #a))) return 0
+#define rbloadsyma(s,a) do { if (!(s = (decltype(s))LookupPlugin(libruby_handle, #a))) { \
+        fprintf(stderr, "Symbol not found: %s\n", #a); \
+        return 0; \
+    } } while (0)
 #define rbloadsym(s) rbloadsyma(s,s)
     rbloadsym(ruby_init_stack);
     rbloadsym(ruby_init);
@@ -361,7 +366,8 @@ static int df_loadruby(void)
     rbloadsym(rb_funcall);
     rbloadsym(rb_define_module);
     rbloadsym(rb_define_singleton_method);
-    rbloadsym(rb_gv_get);
+    rbloadsym(rb_errinfo);
+    rbloadsym(rb_set_errinfo);
     rbloadsym(rb_str_new);
     rbloadsym(rb_string_value_ptr);
     rbloadsym(rb_eval_string_protect);
@@ -406,7 +412,7 @@ static void dump_rb_error(void)
 {
     VALUE s, err;
 
-    err = rb_gv_get("$!");
+    err = rb_errinfo();
 
     s = rb_funcall(err, rb_intern("class"), 0);
     s = rb_funcall(s, rb_intern("name"), 0);
@@ -419,6 +425,8 @@ static void dump_rb_error(void)
     for (int i=0 ; i<8 ; ++i)
         if ((s = rb_ary_shift(err)) != Qnil)
             printerr(" %s\n", rb_string_value_ptr(&s));
+
+    rb_set_errinfo(Qnil);
 }
 
 // ruby thread main loop
@@ -430,12 +438,14 @@ static void df_rubythread(void *p)
     VALUE foo;
     ruby_init_stack(&foo);
 
+#ifdef _WIN32
     if (ruby_sysinit) {
         // ruby1.9 specific API
         static int argc;
         static const char *argv[] = { "dfhack", 0 };
         ruby_sysinit(&argc, (const char ***)&argv);
     }
+#endif
 
     // initialize the ruby interpreter
     ruby_init();
