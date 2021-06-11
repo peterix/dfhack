@@ -1,30 +1,17 @@
-# quickfort aliases configuration file
+# Custom aliases for quickfort query mode blueprints
 #
-# Defines custom keycode shortcuts for blueprints. Definitions in this file take
-# precedence over any definitions in the baseline aliases configuration file at
-# hack/data/quickfort/aliases-common.txt. See that file for aliases that are
-# already defined.
+# This file defines custom key sequence shortcuts for query mode blueprints.
+# Definitions in this file take precedence over any definitions in the
+# baseline aliases configuration file in
+#   hack/data/quickfort/aliases-common.txt
 #
-# This file can be used to simplify repetitive tasks, such as building minecart
-# tracks or adjusting a food stockpile to accept seeds only. Making new aliases
-# is just a matter of mimicking the keys used to navigate through the menus and
-# select options.
+# Please see
+#   https://docs.dfhack.org/en/latest/docs/guides/quickfort-alias-guide.html
+# or
+#   hack/docs/docs/guides/quickfort-alias-guide.html
+# in your DF installation directory for alias syntax documentation and an
+# overview of the DFHack alias standard library.
 #
-# Syntax:
-#   aliasname: keystrokes
 #
-# Special keys:
-#   {Right}, {Left}, {Up}, {Down}, >, < move the DF cursor
-#   {/}, {*}, {+}, {-} can be used to navigate some DF menus
-#   {Enter}, +{Enter}, {ExitMenu} - Enter, Shift+Enter, and Escape, respectively
-#   {Wait} pauses playback briefly
-#
-# Special keys can be repeated by adding a number inside the curly braces, for
-# example: {Down 5}
-#
-# Some shorthand:
-#   &   expands to {Enter}
-#   @   expands to +{Enter}
-#   ^   expands to {ExitMenu}
-#   %   expands to {Wait}
-
+# Add your custom aliases here. Example:
+#   food_stash: {foodprefix}b{Right}{Down 11}p^{permitplants}

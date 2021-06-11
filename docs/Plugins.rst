@@ -37,20 +37,72 @@ For more information, see `the full Stonesense README <stonesense>`.
 
 blueprint
 =========
-Exports a portion of your fortress into QuickFort style blueprint files.::
+The ``blueprint`` command exports the structure of a portion of your fortress in
+a blueprint file that you (or anyone else) can later play back with `quickfort`.
 
-    blueprint <x> <y> <z> <name> [dig] [build] [place] [query]
+Blueprints are ``.csv`` or ``.xlsx`` files created in the ``blueprints``
+subdirectory of your DF folder. The map area to turn into a blueprint is either
+selected interactively with the ``blueprint gui`` command or, if the GUI is not
+used, starts at the active cursor location and extends right and down for the
+requested width and height.
 
-Options (If only region and name are given, export all):
+Usage::
 
-:x,y,z:     Size of map area to export
-:name:      Name of export files
-:dig:       Export dig commands to "<name>-dig.csv"
-:build:     Export build commands to "<name>-build.csv"
-:place:     Export stockpile commands to "<name>-place.csv"
-:query:     Export query commands to "<name>-query.csv"
+    blueprint <width> <height> [<depth>] [<name> [<phases>]] [<options>]
+    blueprint gui [<name> [<phases>]] [<options>]
 
-Goes very well with `fortplan`, for re-importing.
+Examples:
+
+``blueprint gui``
+    Runs `gui/blueprint`, the interactive blueprint frontend, where all
+    configuration for a ``blueprint`` command can be set visually and
+    interactively.
+
+``blueprint 30 40 bedrooms``
+    Generates blueprints for an area 30 tiles wide by 40 tiles tall, starting
+    from the active cursor on the current z-level. Output is written to files
+    with names matching the pattern ``bedrooms-PHASE.csv`` in the ``blueprints``
+    directory.
+
+``blueprint 30 40 bedrooms dig --cursor 108,100,150``
+    Generates only the ``bedrooms-dig.csv`` file from the previous example, and
+    the blueprint start coordinate is set to a specific value instead of using
+    the in-game cursor position.
+
+Positional Parameters:
+
+:``width``:   Width of the area (in tiles) to translate.
+:``height``:  Height of the area (in tiles) to translate.
+:``depth``:   Number of z-levels to translate. Positive numbers go *up* from the
+    cursor and negative numbers go *down*. Defaults to 1 if not specified,
+    indicating that the blueprint should only include the current z-level.
+:``name``:    Base name for blueprint files created in the ``blueprints``
+    directory. If no name is specified, "blueprint" is used by default. The
+    string must contain some characters other than numbers so the name won't be
+    confused with the optional ``depth`` parameter.
+
+Phases:
+
+If you want to generate blueprints only for specific phases, add their names to
+the commandline, anywhere after the blueprint base name. You can list multiple
+phases; just separate them with a space.
+
+:``dig``:    Generate quickfort ``#dig`` blueprints.
+:``build``:  Generate quickfort ``#build`` blueprints for constructions and
+    buildings.
+:``place``:  Generate quickfort ``#place`` blueprints for placing stockpiles.
+:``query``:  Generate quickfort ``#query`` blueprints for configuring rooms.
+
+If no phases are specified, all blueprints are created.
+
+Options:
+
+:``-c``, ``--cursor <x>,<y>,<z>``:
+    Use the specified map coordinates instead of the current cursor position for
+    the upper left corner of the blueprint range. If this option is specified,
+    then an active game map cursor is not necessary.
+:``-h``, ``--help``:
+    Show command help text.
 
 .. _remotefortressreader:
 
@@ -117,24 +169,21 @@ A tool for checking how many tiles contain flowing liquids. If you suspect that
 your magma sea leaks into HFS, you can use this tool to be sure without
 revealing the map.
 
-.. _pathable:
-
-pathable
-========
-
-This plugin implements the back end of the `gui/pathable` script. It exports a
-single Lua function, in ``hack/lua/plugins/pathable.lua``:
-
-* ``paintScreen(cursor[,skip_unrevealed])``: Paint each visible of the screen
-  green or red, depending on whether it can be pathed to from the tile at
-  ``cursor``. If ``skip_unrevealed`` is specified and true, do not draw
-  unrevealed tiles.
-
 .. _probe:
 
 probe
 =====
-Can be used to determine tile properties like temperature.
+
+This plugin provides multiple commands that print low-level properties of the
+selected objects.
+
+* ``probe``: prints some properties of the tile selected with :kbd:`k`. Some of
+  these properties can be passed into `tiletypes`.
+* ``cprobe``: prints some properties of the unit selected with :kbd:`v`, as well
+  as the IDs of any worn items. `gui/gm-unit` and `gui/gm-editor` are more
+  complete in-game alternatives.
+* ``bprobe``: prints some properties of the building selected with :kbd:`q` or
+  :kbd:`t`. `gui/gm-editor` is a more complete in-game alternative.
 
 .. _prospect:
 .. _prospector:
@@ -188,8 +237,9 @@ Usage and related commands:
 :reveal demon:  Reveals everything and allows unpausing - good luck!
 :unreveal:      Reverts the effects of ``reveal``
 :revtoggle:     Switches between ``reveal`` and ``unreveal``
-:revflood:      Hide everything, then reveal tiles with a path to the cursor
-                (useful to make walled-off rooms vanish)
+:revflood:      Hide everything, then reveal tiles with a path to the cursor.
+                Note that tiles behind constructed walls are also revealed as a
+                workaround for :bug:`1871`.
 :revforget:     Discard info about what was visible before revealing the map.
                 Only useful where (e.g.) you abandoned with the fort revealed
                 and no longer want the data.
@@ -291,6 +341,8 @@ One-shot subcommands:
 
 Subcommands that persist until disabled or DF quits:
 
+.. comment: sort these alphabetically
+
 :adamantine-cloth-wear: Prevents adamantine clothing from wearing out while being worn (:bug:`6481`).
 :advmode-contained:     Works around :bug:`6202`, custom reactions with container inputs
                         in advmode. The issue is that the screen tries to force you to select
@@ -305,6 +357,7 @@ Subcommands that persist until disabled or DF quits:
 :craft-age-wear:        Fixes the behavior of crafted items wearing out over time (:bug:`6003`).
                         With this tweak, items made from cloth and leather will gain a level of
                         wear  every 20 years.
+:do-job-now:            Adds a job priority toggle to the jobs list
 :embark-profile-name:   Allows the use of lowercase letters when saving embark profiles
 :eggs-fertile:          Displays a fertility indicator on nestboxes
 :farm-plot-select:      Adds "Select all" and "Deselect all" options to farm plot menus
@@ -335,12 +388,14 @@ Subcommands that persist until disabled or DF quits:
                         i.e. stop the rightmost list of the Positions page of the military
                         screen from constantly resetting to the top.
 :nestbox-color:         Fixes the color of built nestboxes
+:reaction-gloves:       Fixes reactions to produce gloves in sets with correct handedness (:bug:`6273`)
 :shift-8-scroll:        Gives Shift-8 (or :kbd:`*`) priority when scrolling menus, instead of scrolling the map
 :stable-cursor:         Saves the exact cursor position between t/q/k/d/b/etc menus of fortress mode.
 :stone-status-all:      Adds an option to toggle the economic status of all stones
 :title-start-rename:    Adds a safe rename option to the title screen "Start Playing" menu
 :tradereq-pet-gender:   Displays pet genders on the trade request screen
-:reaction-gloves:       Fixes reactions to produce gloves in sets with correct handedness (:bug:`6273`)
+
+.. comment: sort these alphabetically
 
 .. _fix-armory:
 
@@ -701,14 +756,91 @@ enabled materials, you should be able to place complex constructions more conven
 buildingplan
 ============
 When active (via ``enable buildingplan``), this plugin adds a planning mode for
-furniture placement.  You can then place furniture and other buildings before
-the required materials are available, and the job will be unsuspended when
-the item is created.
+building placement. You can then place furniture, constructions, and other buildings
+before the required materials are available, and they will be created in a suspended
+state. Buildingplan will periodically scan for appropriate items, and the jobs will
+be unsuspended when the items are available.
 
-Very useful when combined with `workflow` - you can set a constraint
+This is very useful when combined with `workflow` - you can set a constraint
 to always have one or two doors/beds/tables/chairs/etc available, and place
-as many as you like.  The plugins then take over and fulfill the orders,
+as many as you like. The plugins then take over and fulfill the orders,
 with minimal space dedicated to stockpiles.
+
+.. _buildingplan-filters:
+
+Item filtering
+--------------
+
+While placing a building, you can set filters for what materials you want the building made
+out of, what quality you want the component items to be, and whether you want the items to
+be decorated.
+
+If a building type takes more than one item to construct, use :kbd:`Ctrl`:kbd:`Left` and
+:kbd:`Ctrl`:kbd:`Right` to select the item that you want to set filters for. Any filters that
+you set will be used for all buildings of the selected type placed from that point onward
+(until you set a new filter or clear the current one). Buildings placed before the filters
+were changed will keep the filter values that were set when the building was placed.
+
+For example, you can be sure that all your constructed walls are the same color by setting
+a filter to accept only certain types of stone.
+
+Quickfort mode
+--------------
+
+If you use the external Python Quickfort to apply building blueprints instead of the native
+DFHack `quickfort` script, you must enable Quickfort mode. This temporarily enables
+buildingplan for all building types and adds an extra blank screen after every building
+placement. This "dummy" screen is needed for Python Quickfort to interact successfully with
+Dwarf Fortress.
+
+Note that Quickfort mode is only for compatibility with the legacy Python Quickfort. The
+DFHack `quickfort` script does not need Quickfort mode to be enabled. The `quickfort` script
+will successfully integrate with buildingplan as long as the buildingplan plugin is enabled.
+
+.. _buildingplan-settings:
+
+Global settings
+---------------
+
+The buildingplan plugin has several global settings that can be set from the UI (:kbd:`G`
+from any building placement screen, for example: :kbd:`b`:kbd:`a`:kbd:`G`). These settings
+can also be set from the ``DFHack#`` prompt once a map is loaded (or from your
+``onMapLoad.init`` file) with the syntax::
+
+    buildingplan set <setting> <true|false>
+
+and displayed with::
+
+    buildingplan set
+
+The available settings are:
+
++----------------+---------+-----------+---------------------------------------+
+| Setting        | Default | Persisted | Description                           |
++================+=========+===========+=======================================+
+| all_enabled    | false   | no        | Enable planning mode for all building |
+|                |         |           | types.                                |
++----------------+---------+-----------+---------------------------------------+
+| blocks         | true    | yes       | Allow blocks, boulders, logs, or bars |
++----------------+---------+           | to be matched for generic "building   |
+| boulders       | true    |           | material" items                       |
++----------------+---------+           |                                       |
+| logs           | true    |           |                                       |
++----------------+---------+           |                                       |
+| bars           | false   |           |                                       |
++----------------+---------+-----------+---------------------------------------+
+| quickfort_mode | false   | no        | Enable compatibility mode for the     |
+|                |         |           | legacy Python Quickfort (not required |
+|                |         |           | for DFHack quickfort)                 |
++----------------+---------+-----------+---------------------------------------+
+
+For example, to ensure you only use blocks when a "building material" item is required, you
+could add this to your ``onMapLoad.init`` file::
+
+    on-new-fortress buildingplan set boulders false; buildingplan set logs false
+
+Persisted settings (i.e. ``blocks``, ``boulders``, ``logs``, and ``bars``) are saved with
+your game, so you only need to set them to the values you want once.
 
 .. _confirm:
 
@@ -779,6 +911,7 @@ Adds a :kbd:`q` menu for track stops, which is completely blank by default.
 This allows you to view and/or change the track stop's friction and dump
 direction settings, using the keybindings from the track stop building interface.
 
+.. _sort:
 .. _sort-items:
 
 sort-items
@@ -1438,7 +1571,9 @@ can be displayed on the main fortress mode screen:
 The file :file:`dfhack-config/dwarfmonitor.json` can be edited to control the
 positions and settings of all widgets displayed. This file should contain a
 JSON object with the key ``widgets`` containing an array of objects - see the
-included file in the ``dfhack-config`` folder for an example::
+included file in the ``dfhack-config`` folder for an example:
+
+.. code-block:: lua
 
     {
         "widgets": [
@@ -1572,6 +1707,8 @@ Options:
 :nick:        Mass-assign nicknames, must be followed by the name you want
               to set.
 :remnick:     Mass-remove nicknames.
+:enumnick:    Assign enumerated nicknames (e.g. "Hen 1", "Hen 2"...). Must be
+              followed by the prefix to use in nicknames.
 :tocages:     Assign unit(s) to cages inside a pasture.
 :uinfo:       Print info about unit(s). If no filters are set a unit must
               be selected in the in-game ui.
@@ -1934,10 +2071,10 @@ Options:
 :L:     Low Traffic
 :R:     Restricted Traffic
 
-.. _burrow:
+.. _burrows:
 
-burrow
-======
+burrows
+=======
 Miscellaneous burrow control. Allows manipulating burrows and automated burrow
 expansion while digging.
 
@@ -2268,8 +2405,12 @@ fortplan
 ========
 Usage: ``fortplan [filename]``
 
+**Fortplan is deprecated.** Please use DFHack's more powerful `quickfort`
+command instead. You can use your existing .csv files. Just move them to the
+``blueprints`` folder in your DF installation, and instead of ``fortplan file.csv`` run ``quickfort run file.csv``.
+
 Designates furniture for building according to a ``.csv`` file with
-quickfort-style syntax. Companion to `digfort`.
+quickfort-style syntax.
 
 The first line of the file must contain the following::
 
@@ -2479,7 +2620,8 @@ See also `alltraffic`, `filltraffic`, and `restrictice`.
 tiletypes
 =========
 Can be used for painting map tiles and is an interactive command, much like
-`liquids`.  If something goes wrong, `fixveins` may help.
+`liquids`. Some properties of existing tiles can be looked up with `probe`. If
+something goes wrong, `fixveins` may help.
 
 The tool works with two set of options and a brush. The brush determines which
 tiles will be processed. First set of options is the filter, which can exclude
@@ -2630,25 +2772,40 @@ Usage:
 
 createitem
 ==========
-Allows creating new items of arbitrary types and made of arbitrary materials.
-By default, items created are spawned at the feet of the selected unit.
+Allows creating new items of arbitrary types and made of arbitrary materials. A
+unit must be selected in-game to use this command. By default, items created are
+spawned at the feet of the selected unit.
 
 Specify the item and material information as you would indicate them in
 custom reaction raws, with the following differences:
 
 * Separate the item and material with a space rather than a colon
-* If the item has no subtype, omit the :NONE
-* If the item is REMAINS, FISH, FISH_RAW, VERMIN, PET, or EGG,
-  specify a CREATURE:CASTE pair instead of a material token.
+* If the item has no subtype, the ``:NONE`` can be omitted
+* If the item is ``REMAINS``, ``FISH``, ``FISH_RAW``, ``VERMIN``, ``PET``, or ``EGG``,
+  specify a ``CREATURE:CASTE`` pair instead of a material token.
+* If the item is a ``PLANT_GROWTH``, specify a ``PLANT_ID:GROWTH_ID`` pair
+  instead of a material token.
 
 Corpses, body parts, and prepared meals cannot be created using this tool.
 
-Examples::
+To obtain the item and material tokens of an existing item, run
+``createitem inspect``. Its output can be passed directly as arguments to
+``createitem`` to create new matching items, as long as the item type is
+supported.
+
+Examples:
+
+* Create 2 pairs of steel gauntlets::
 
     createitem GLOVES:ITEM_GLOVES_GAUNTLETS INORGANIC:STEEL 2
-            Create 2 pairs of steel gauntlets.
+
+* Create tower-cap logs::
+
     createitem WOOD PLANT_MAT:TOWER_CAP:WOOD
-            Create tower-cap logs.
+
+* Create bilberries::
+
+    createitem PLANT_GROWTH BILBERRY:FRUIT
 
 For more examples, :wiki:`see this wiki page <Utility:DFHack/createitem>`.
 
@@ -2936,8 +3093,10 @@ Lua API
 Some plugins consist solely of native libraries exposed to Lua. They are listed
 in the `lua-api` file under `lua-plugins`:
 
-* `eventful`
 * `building-hacks`
+* `cxxrandom`
+* `eventful`
 * `luasocket`
 * `map-render`
-* `cxxrandom`
+* `pathable`
+* `xlsxreader`

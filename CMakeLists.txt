@@ -2,6 +2,7 @@
 
 ## some generic CMake magic
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+cmake_policy(SET CMP0048 NEW)
 project(dfhack)
 
 if("${CMAKE_GENERATOR}" STREQUAL Ninja)
@@ -178,12 +179,19 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 endif()
 
 # make sure all the necessary submodules have been set up
-if(NOT EXISTS ${dfhack_SOURCE_DIR}/library/xml/codegen.pl OR NOT EXISTS ${dfhack_SOURCE_DIR}/depends/clsocket/CMakeLists.txt)
+if(NOT EXISTS ${dfhack_SOURCE_DIR}/library/xml/codegen.pl
+    OR NOT EXISTS ${dfhack_SOURCE_DIR}/scripts/CMakeLists.txt
+    OR NOT EXISTS ${dfhack_SOURCE_DIR}/depends/clsocket/CMakeLists.txt
+    OR NOT EXISTS ${dfhack_SOURCE_DIR}/depends/libexpat/expat/CMakeLists.txt
+    OR NOT EXISTS ${dfhack_SOURCE_DIR}/depends/libzip/CMakeLists.txt
+    OR NOT EXISTS ${dfhack_SOURCE_DIR}/depends/xlsxio/CMakeLists.txt
+    OR NOT EXISTS ${dfhack_SOURCE_DIR}/depends/luacov/src
+)
     message(SEND_ERROR "One or more required submodules could not be found! Run 'git submodule update --init' from the root DFHack directory. (See the section 'Getting the Code' in docs/Compile.rst)")
 endif()
 
 # set up versioning.
-set(DF_VERSION "0.47.04")
+set(DF_VERSION "0.47.05")
 set(DFHACK_RELEASE "r1")
 set(DFHACK_PRERELEASE FALSE)
 
@@ -403,9 +411,11 @@ else()
     set(DFHACK_TINYXML "dfhack-tinyxml")
 endif()
 
+include_directories(depends/lodepng)
 include_directories(depends/tthread)
 include_directories(${ZLIB_INCLUDE_DIRS})
 include_directories(depends/clsocket/src)
+include_directories(depends/xlsxio/include)
 add_subdirectory(depends)
 
 find_package(Git REQUIRED)
@@ -416,7 +426,8 @@ endif()
 # build the lib itself
 if(BUILD_LIBRARY)
     add_subdirectory(library)
-    install(FILES LICENSE.rst docs/changelog.txt DESTINATION ${DFHACK_USERDOC_DESTINATION})
+    install(FILES LICENSE.rst DESTINATION ${DFHACK_USERDOC_DESTINATION})
+    install(FILES docs/changelog-placeholder.txt DESTINATION ${DFHACK_USERDOC_DESTINATION} RENAME changelog.txt)
 endif()
 
 file(WRITE "${CMAKE_BINARY_DIR}/dfhack_setarch.txt" ${DFHACK_SETARCH})
@@ -440,6 +451,7 @@ if(BUILD_DOCS)
 
     file(GLOB SPHINX_DEPS
         "${CMAKE_CURRENT_SOURCE_DIR}/docs/*.rst"
+        "${CMAKE_CURRENT_SOURCE_DIR}/docs/guides/*.rst"
         "${CMAKE_CURRENT_SOURCE_DIR}/docs/changelog.txt"
         "${CMAKE_CURRENT_SOURCE_DIR}/docs/gen_changelog.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/docs/images/*.png"
@@ -486,8 +498,12 @@ endif()
 
 option(BUILD_TESTS "Include tests (currently just installs Lua tests into the scripts folder)" OFF)
 if(BUILD_TESTS)
+    if(EXISTS "${dfhack_SOURCE_DIR}/test/scripts")
+        message(SEND_ERROR "test/scripts must not exist in the dfhack repo since it would conflict with the tests installed from the scripts repo.")
+    endif()
     install(DIRECTORY ${dfhack_SOURCE_DIR}/test
         DESTINATION ${DFHACK_DATA_DESTINATION}/scripts)
+    install(FILES ci/test.lua DESTINATION ${DFHACK_DATA_DESTINATION}/scripts)
 endif()
 
 # Packaging with CPack!

@@ -65,6 +65,8 @@ Third-party tools that use the RPC API include:
 
 - `Armok Vision <https://github.com/RosaryMala/armok-vision>`_ (:forums:`Bay12 forums thread <146473>`)
 
+.. _remote-client-libs:
+
 Client libraries
 ----------------
 
@@ -74,6 +76,9 @@ from other (non-C++) languages, including:
 - `RemoteClientDF-Net <https://github.com/RosaryMala/RemoteClientDF-Net>`_ for C#
 - `dfhackrpc <https://github.com/BenLubar/dfhackrpc>`_ for Go
 - `dfhack-remote <https://github.com/alexchandel/dfhack-remote>`_ for JavaScript
+- `dfhack-client-qt <https://github.com/cvuchener/dfhack-client-qt>`_ for C++ with Qt
+- `dfhack-client-python <https://github.com/McArcady/dfhack-client-python>`_ for Python (adapted from :forums:`"Blendwarf" <178089>`)
+- `dfhack-client-java <https://github.com/McArcady/dfhack-client-java>`_ for Java
 
 
 Protocol description

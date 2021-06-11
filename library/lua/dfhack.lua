@@ -562,7 +562,6 @@ function Script:get_flags()
 end
 
 internal.scripts = internal.scripts or {}
-local scripts = internal.scripts
 
 local hack_path = dfhack.getHackPath()
 
@@ -583,6 +582,7 @@ local valid_script_flags = {
     module_strict = {required = false},
     alias = {required = false},
     alias_count = {required = false},
+    scripts = {required = false},
 }
 
 function dfhack.run_script(name,...)
@@ -603,6 +603,7 @@ end
 reqscript = dfhack.reqscript
 
 function dfhack.script_environment(name, strict)
+    local scripts = internal.scripts
     local path = dfhack.findScript(name)
     if not scripts[path] or scripts[path]:needs_update() then
         local _, env = dfhack.run_script_with_env(nil, name, {
@@ -625,6 +626,7 @@ function dfhack.run_script_with_env(envVars, name, flags, ...)
         error('Could not find script ' .. name)
     end
 
+    local scripts = flags.scripts or internal.scripts
     if scripts[file] == nil then
         scripts[file] = Script(file)
     end
@@ -735,8 +737,7 @@ function dfhack.script_help(script_name, extension)
     return help
 end
 
-local function _run_command(...)
-    args = {...}
+local function _run_command(args, use_console)
     if type(args[1]) == 'table' then
         command = args[1]
     elseif #args > 1 and type(args[2]) == 'table' then
@@ -750,11 +751,11 @@ local function _run_command(...)
     else
         error('Invalid arguments')
     end
-    return internal.runCommand(command)
+    return internal.runCommand(command, use_console)
 end
 
 function dfhack.run_command_silent(...)
-    local result = _run_command(...)
+    local result = _run_command({...})
     local output = ""
     for i, f in pairs(result) do
         if type(f) == 'table' then
@@ -765,14 +766,7 @@ function dfhack.run_command_silent(...)
 end
 
 function dfhack.run_command(...)
-    local result = _run_command(...)
-    for i, f in pairs(result) do
-        if type(f) == 'table' then
-            dfhack.color(f[1])
-            dfhack.print(f[2])
-        end
-    end
-    dfhack.color(COLOR_RESET)
+    local result = _run_command({...}, true)
     return result.status
 end
 

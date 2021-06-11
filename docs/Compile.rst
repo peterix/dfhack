@@ -1,3 +1,5 @@
+.. highlight:: shell
+
 .. _compile:
 
 ################
@@ -47,7 +49,13 @@ find yourself cloning DFHack frequently as part of your development process, or
 getting stuck on anything else Git-related, feel free to reach out to us for
 assistance.
 
-.. admonition:: A note on submodules
+.. admonition:: Offline builds
+
+  If you plan to build DFHack on a machine without an internet connection (or
+  with an unreliable connection), see `note-offline-builds` for additional
+  instructions.
+
+.. admonition:: Working with submodules
 
   DFHack uses submodules extensively to manage its subprojects (including the
   ``scripts`` folder and DF-structures in ``library/xml``). Failing to keep
@@ -78,27 +86,11 @@ assistance.
   are also able to help with any submodule-related (or Git-related) issues
   you may encounter.
 
-**More notes**:
-
-* `note-offline-builds` - read this if your build machine may not have an internet connection!
-* `note-old-git-and-dfhack`
 
 Contributing to DFHack
-======================
-To contribute to DFHack on GitHub, you will need a GitHub account. Only some
-DFHack developers can push directly to the DFHack repositories; we recommend
-making a fork of whatever repos you are interested in contributing to, making
-changes there, and submitting pull requests.  `GitHub's pull request tutorial
-<https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/proposing-changes-to-your-work-with-pull-requests>`_
-is a good resource for getting started with pull requests (some things to note:
-our work mainly happens on the ``develop`` branch, and you will need to use
-your own fork, assuming that you don't have write access to the DFHack repos).
+----------------------
 
-Most development-related discussion happens on IRC or in individual GitHub
-issues and pull requests, but there are also other ways to reach out - see
-`support` for details.
-
-For more details on contributing to DFHack, including pull requests, code
+For details on contributing to DFHack, including pull requests, code
 format, and more, please see `contributing-code`.
 
 
@@ -208,11 +200,11 @@ through your package manager, if possible.
 
 You also need zlib, libsdl (1.2, not sdl2, like DF), perl, and the XML::LibXML
 and XML::LibXSLT perl packages (for the code generation parts). You should be
-able to find them in your distro repositories.
+able to find them in your distribution's repositories.
 
 To build `stonesense`, you'll also need OpenGL headers.
 
-Here are some package install commands for various platforms:
+Here are some package install commands for various distributions:
 
 * On Arch linux:
 
@@ -222,11 +214,11 @@ Here are some package install commands for various platforms:
 
     apt-get install gcc cmake ninja-build git zlib1g-dev libsdl1.2-dev libxml-libxml-perl libxml-libxslt-perl
 
+  * Other Debian-based distributions should have similar requirements.
+
 * On Fedora::
 
     yum install gcc-c++ cmake ninja-build git zlib-devel SDL-devel perl-core perl-XML-LibXML perl-XML-LibXSLT ruby
-
-* Debian and derived distros should have similar requirements to Ubuntu.
 
 
 Multilib dependencies
@@ -283,7 +275,9 @@ Dwarf Fortress runs, it uses a libstdc++ shipped in the ``libs`` folder, which
 comes from GCC 4.8 and is incompatible with code compiled with newer GCC
 versions. As of DFHack 0.42.05-alpha1, the ``dfhack`` launcher script attempts
 to fix this by automatically removing the DF-provided libstdc++ on startup.
-In rare cases, this may fail and cause errors such as::
+In rare cases, this may fail and cause errors such as:
+
+.. code-block:: text
 
    ./libs/Dwarf_Fortress: /pathToDF/libs/libstdc++.so.6: version
        `GLIBCXX_3.4.18' not found (required by ./hack/libdfhack.so)
@@ -364,7 +358,7 @@ Dependencies and system set-up
     both 32-bit and 64-bit variants. Homebrew also doesn't require constant use
     of ``sudo``.
 
-    Using `Homebrew <http://brew.sh/>`_ (recommended)::
+    Using `Homebrew <https://brew.sh/>`_ (recommended)::
 
         brew tap homebrew/versions
         brew install git
@@ -399,14 +393,14 @@ Dependencies and system set-up
   * In a separate, local Perl install
 
     Rather than using system Perl, you might also want to consider
-    the Perl manager, `Perlbrew <http://perlbrew.pl>`_.
+    the Perl manager, `Perlbrew <https://perlbrew.pl>`_.
 
     This manages Perl 5 locally under ``~/perl5/``, providing an easy
     way to install Perl and run CPAN against it without ``sudo``.
     It can maintain multiple Perl installs and being local has the
     benefit of easy migration and insulation from OS issues and upgrades.
 
-    See http://perlbrew.pl/ for more details.
+    See https://perlbrew.pl/ for more details.
 
 Building
 --------
@@ -517,7 +511,7 @@ To install Chocolatey and the required dependencies:
 You can now use all of these utilities from any normal ``cmd.exe`` window.
 You only need Admin/elevated ``cmd.exe`` for running ``choco install`` commands;
 for all other purposes, including compiling DFHack, you should use
-a normal ``cmd.exe`` (or, better, an improved terminal like `Cmder <http://cmder.net/>`_;
+a normal ``cmd.exe`` (or, better, an improved terminal like `Cmder <https://cmder.net/>`_;
 details below, under Build.)
 
 **NOTE**: you can run the above ``choco install`` command even if you already have
@@ -544,7 +538,7 @@ Some examples:
 CMake
 ^^^^^
 You can get the win32 installer version from
-`the official site <http://www.cmake.org/cmake/resources/software.html>`_.
+`the official site <https://cmake.org/download/>`_.
 It has the usual installer wizard. Make sure you let it add its binary folder
 to your binary search PATH so the tool can be later run from anywhere.
 
@@ -617,7 +611,7 @@ due to the tiny window size and extremely limited scrollback. For that reason yo
 may prefer to compile in the IDE which will always show all build output.
 
 Alternatively (or additionally), consider installing an improved Windows terminal
-such as `Cmder <http://cmder.net/>`_. Easily installed through Chocolatey with:
+such as `Cmder <https://cmder.net/>`_. Easily installed through Chocolatey with:
 ``choco install cmder -y``.
 
 **Note for Cygwin/msysgit users**: It is also possible to compile DFHack from a
@@ -706,18 +700,3 @@ a command starting with ``cmake .. -G Ninja`` on Linux and macOS, following the
 instructions in the sections above. CMake should automatically locate files that
 you placed in ``CMake/downloads``, and use them instead of attempting to
 download them.
-
-.. _note-old-git-and-dfhack:
-
-Note on using very old git versions with pre-0.43.03 DFHack versions
---------------------------------------------------------------------
-
-If you are using git 1.8.0 or older, and cloned DFHack before commit 85a920d
-(around DFHack v0.43.03-alpha1), you may run into fatal git errors when updating
-submodules after switching branches. This is due to those versions of git being
-unable to handle our change from "scripts/3rdparty/name" submodules to a single
-"scripts" submodule. This may be fixable by renaming .git/modules/scripts to
-something else and re-running ``git submodule update --init`` on the branch with
-the single scripts submodule (and running it again when switching back to the
-one with multiple submodules, if necessary), but it is usually much simpler to
-upgrade your git version.

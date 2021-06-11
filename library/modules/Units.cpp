@@ -61,6 +61,7 @@ using namespace std;
 #include "df/identity_type.h"
 #include "df/game_mode.h"
 #include "df/histfig_entity_link_positionst.h"
+#include "df/histfig_relationship_type.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
 #include "df/historical_figure_info.h"
@@ -204,14 +205,15 @@ void Units::setNickname(df::unit *unit, std::string nick)
             df::historical_figure *id_hfig = NULL;
 
             switch (identity->type) {
+            case df::identity_type::None:
             case df::identity_type::HidingCurse:
-            case df::identity_type::Identity:
             case df::identity_type::FalseIdentity:
+            case df::identity_type::InfiltrationIdentity:
+            case df::identity_type::Identity:
                 break;  //  We want the nickname to end up in the identity
 
-            case df::identity_type::Unk_1:  // Guess, but that's how it worked in the past
+            case df::identity_type::Impersonating:
             case df::identity_type::TrueName:
-            case df::identity_type::Unk_4:  // Pure guess, as this is a new case, still unseen
                 id_hfig = df::historical_figure::find(identity->histfig_id);
                 break;
             }
@@ -891,6 +893,19 @@ bool Units::isValidLabor(df::unit *unit, df::unit_labor labor)
     return true;
 }
 
+bool Units::setLaborValidity(df::unit_labor labor, bool isValid)
+{
+    if (!is_valid_enum_item(labor))
+        return false;
+    if (labor == df::unit_labor::NONE)
+        return false;
+    df::historical_entity *entity = df::historical_entity::find(ui->civ_id);
+    if (!entity || !entity->entity_raw)
+        return false;
+    entity->entity_raw->jobs.permitted_labor[labor] = isValid;
+    return true;
+}
+
 inline void adjust_speed_rating(int &rating, bool is_adventure, int value, int dwarf100, int dwarf200, int adv50, int adv75, int adv100, int adv200)
 {
     if  (is_adventure)
@@ -1435,6 +1450,47 @@ int8_t Units::getCasteProfessionColor(int race, int casteid, df::profession pid)
 
     // default to dwarven peasant color
     return 3;
+}
+
+df::goal_type Units::getGoalType(df::unit *unit, size_t goalIndex)
+{
+    CHECK_NULL_POINTER(unit);
+
+    df::goal_type goal = df::goal_type::STAY_ALIVE;
+    if (unit->status.current_soul
+        && unit->status.current_soul->personality.dreams.size() > goalIndex)
+    {
+        goal = unit->status.current_soul->personality.dreams[goalIndex]->type;
+    }
+    return goal;
+}
+
+std::string Units::getGoalName(df::unit *unit, size_t goalIndex)
+{
+    CHECK_NULL_POINTER(unit);
+
+    df::goal_type goal = getGoalType(unit, goalIndex);
+    bool achieved_goal = isGoalAchieved(unit, goalIndex);
+
+    std::string goal_name = achieved_goal ? ENUM_ATTR(goal_type, achieved_short_name, goal) : ENUM_ATTR(goal_type, short_name, goal);
+    if (goal == df::goal_type::START_A_FAMILY) {
+        std::string parent = ENUM_KEY_STR(histfig_relationship_type, histfig_relationship_type::Parent);
+        size_t start_pos = goal_name.find(parent);
+        if (start_pos != std::string::npos) {
+            df::histfig_relationship_type parent_type = isFemale(unit) ? histfig_relationship_type::Mother : histfig_relationship_type::Father;
+            goal_name.replace(start_pos, parent.length(), ENUM_KEY_STR(histfig_relationship_type, parent_type));
+        }
+    }
+    return goal_name;
+}
+
+bool Units::isGoalAchieved(df::unit *unit, size_t goalIndex)
+{
+    CHECK_NULL_POINTER(unit);
+
+    return unit->status.current_soul
+        && unit->status.current_soul->personality.dreams.size() > goalIndex
+        && unit->status.current_soul->personality.dreams[goalIndex]->flags.whole != 0;
 }
 
 std::string Units::getSquadName(df::unit *unit)

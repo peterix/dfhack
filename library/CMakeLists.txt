@@ -40,6 +40,8 @@ set(MAIN_HEADERS
     include/Module.h
     include/Pragma.h
     include/MemAccess.h
+    include/PluginManager.h
+    include/PluginStatics.h
     include/Signal.hpp
     include/TileTypes.h
     include/Types.h
@@ -72,6 +74,7 @@ set(MAIN_SOURCES
     MiscUtils.cpp
     Types.cpp
     PluginManager.cpp
+    PluginStatics.cpp
     TileTypes.cpp
     VersionInfoFactory.cpp
     RemoteClient.cpp
@@ -403,7 +406,10 @@ if(APPLE)
     set(ZIP_LIBRARY /usr/lib/libz.dylib)
     target_link_libraries(dfhack ${SDL_LIBRARY})
     target_link_libraries(dfhack ${CXX_LIBRARY})
-    target_link_libraries(dfhack ${ZIP_LIBRARY})
+    if(EXISTS ${ZIP_LIBRARY})
+        # doesn't exist on macOS 11, but DFHack seems to find the right library there
+        target_link_libraries(dfhack ${ZIP_LIBRARY})
+    endif()
     target_link_libraries(dfhack ncurses)
     set_target_properties(dfhack PROPERTIES VERSION 1.0.0)
     set_target_properties(dfhack PROPERTIES SOVERSION 1.0.0)
@@ -482,3 +488,5 @@ if(BUILD_DEVEL)
         DESTINATION ${DFHACK_INCLUDES_DESTINATION}
         FILES_MATCHING PATTERN "*.h" PATTERN "*.inc" )
 endif()
+
+add_subdirectory(xml)

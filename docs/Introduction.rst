@@ -8,7 +8,7 @@ DFHack is a Dwarf Fortress memory access library, distributed with
 a wide variety of useful scripts and plugins.
 
 The project is currently hosted `on GitHub <https://www.github.com/DFHack/dfhack>`_,
-and can be downloaded from `the releases page <http://github.com/DFHack/dfhack/releases>`_
+and can be downloaded from `the releases page <https://github.com/DFHack/dfhack/releases>`_
 - see `installing` for installation instructions. This is also where the
 `DFHack bug tracker <https://www.github.com/DFHack/dfhack>`_ is hosted.
 
@@ -77,6 +77,12 @@ If  the search function in this documentation isn't enough and
 
 - the `#dfhack IRC channel on freenode <https://webchat.freenode.net/?channels=dfhack>`_
 - the `Bay12 DFHack thread <https://dfhack.org/bay12>`_
+- on GitHub:
+    - for bugs, use the :issue:`issue tracker <>`
+    - for more open-ended questions, use the `discussion board
+      <https://github.com/DFHack/dfhack/discussions>`__. Note that this is a
+      relatively-new feature as of 2021, but maintainers should still be
+      notified of any discussions here.
 - the `/r/dwarffortress <https://dwarffortress.reddit.com>`_ questions thread
 - the thread for the mod or Starter Pack you're using (if any)
 

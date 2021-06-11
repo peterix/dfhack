@@ -10,6 +10,7 @@ or make a pull request!
 Name                    Github                  Other
 ======================= ======================= ===========================
 8Z                      8Z
+Abel                    abstern
 acwatkins               acwatkins
 Alexander Gavrilov      angavrilov              ag
 Amostubal               Amostubal
@@ -24,6 +25,8 @@ Bearskie                Bearskie
 belal                   jimhester
 Ben Lubar               BenLubar
 Ben Rosser              TC01
+Benjamin McKenna        britishben
+Benjamin Seiller        bseiller                RedDwarfStepper
 billw2012               billw2012
 BrickViking             brickviking
 brndd                   brndd                   burneddi
@@ -33,6 +36,7 @@ Carter Bray             Qartar
 Chris Dombroski         cdombroski
 Clayton Hughes
 Clément Vuchener        cvuchener
+daedsidog               daedsidog
 Dan Amlund              danamlund
 Daniel Brooks           db48x
 David                   Nilsolm
@@ -51,7 +55,9 @@ Espen Wiborg
 expwnent                expwnent
 Feng
 figment                 figment
+Gabe Rau                gaberau
 gchristopher            gchristopher
+George Murray           GitOnUp
 grubsteak               grubsteak
 Harlan Playford         playfordh
 Hayati Ayguen           hayguen
@@ -60,7 +66,6 @@ Ian S                   kremlin-
 IndigoFenix
 James Gilles            kazimuth
 James Logsdon           jlogsdon
-Japa                    JapaMala
 Jared Adams
 Jeremy Apthorp          nornagon
 Jim Lisi                stonetoad
@@ -76,6 +81,7 @@ kane-t                  kane-t
 Kelly Kinkade           ab9rf
 KlonZK                  KlonZK
 Kris Parker             kaypy
+Kristjan Moore          kristjanmoore
 Kromtec                 Kromtec
 Kurik Amudnil
 Lethosor                lethosor
@@ -110,6 +116,8 @@ Nikolay Amiantov        abbradar
 nocico                  nocico
 Omniclasm
 OwnageIsMagic           OwnageIsMagic
+palenerd                dlmarquis
+PassionateAngler        PassionateAngler
 Patrik Lundell          PatrikLundell
 Paul Fenwick            pjf
 PeridexisErrant         PeridexisErrant
@@ -132,15 +140,18 @@ Rinin                   Rinin
 rndmvar                 rndmvar
 Robert Heinrich         rh73
 Robert Janetzko         robertjanetzko
+Rocco Moretti           roccomoretti
 RocheLimit
 rofl0r                  rofl0r
 root
+Rose                    RosaryMala
 Roses                   Pheosics
 Ross M                  RossM
 rout
 rubybrowncoat           rubybrowncoat
 Rumrusher               rumrusher
 RusAnon                 RusAnon
+Ryan Bennitt            ryanbennitt
 sami
 scamtank                scamtank
 Sebastian Wolfertz      Enkrod
@@ -150,11 +161,14 @@ simon
 Simon Jackson           sizeak
 stolencatkarma
 Stoyan Gaydarov         sgayda2
+Su                      Moth-Tolias
 suokko                  suokko                  shrieker
 sv-esk                  sv-esk
+Tachytaenius            wolfboyft
 Tacomagic
 thefriendlyhacker       thefriendlyhacker
 TheHologram             TheHologram
+Theo Kalfas             teolandon
 therahedwig             therahedwig
 ThiagoLira              ThiagoLira
 thurin                  thurin
@@ -171,7 +185,7 @@ U-glouglou\\simon
 Valentin Ochs           Cat-Ion
 Vitaly Pronkin          pronvit                 mifki
 ViTuRaS                 ViTuRaS
-Vjek
+Vjek                    vjek
 Warmist                 warmist
 Wes Malone              wesQ3
 Will Rogers             wjrogers

@@ -11,6 +11,7 @@
 
 // DF data structure definition headers
 #include "DataDefs.h"
+#include "LuaTools.h"
 #include "MiscUtils.h"
 #include "Types.h"
 #include "df/viewscreen_dwarfmodest.h"
@@ -40,6 +41,7 @@ DFHACK_PLUGIN("resume");
 #define PLUGIN_VERSION 0.2
 
 REQUIRE_GLOBAL(gps);
+REQUIRE_GLOBAL(process_jobs);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
@@ -85,6 +87,25 @@ struct SuspendedBuilding
     }
 };
 
+static bool is_planned_building(df::building *bld)
+{
+    auto L = Lua::Core::State;
+    color_ostream_proxy out(Core::getInstance().getConsole());
+    Lua::StackUnwinder top(L);
+
+    if (!lua_checkstack(L, 2) ||
+        !Lua::PushModulePublic(
+            out, L, "plugins.buildingplan", "isPlannedBuilding"))
+        return false;
+
+    Lua::Push(L, bld);
+
+    if (!Lua::SafeCall(out, L, 1, 1))
+        return false;
+
+    return lua_toboolean(L, -1);
+}
+
 DFHACK_PLUGIN_IS_ENABLED(enabled);
 static bool buildings_scanned = false;
 static vector<SuspendedBuilding> suspended_buildings, resumed_buildings;
@@ -101,7 +122,7 @@ void scan_for_suspended_buildings()
         if (job)
         {
             SuspendedBuilding sb(bld);
-            sb.is_planned = job->job_items.size() == 1 && job->job_items[0]->item_type == item_type::NONE;
+            sb.is_planned = is_planned_building(bld);
 
             auto it = resumed_buildings.begin();
 
@@ -202,6 +223,11 @@ struct resume_hook : public df::viewscreen_dwarfmodest
 
         if (enabled && DFHack::World::ReadPauseState() && ui->main.mode == ui_sidebar_mode::Default)
         {
+            if (*process_jobs)
+            {
+                // something just created some buildings. rescan.
+                clear_scanned();
+            }
             scan_for_suspended_buildings();
             show_suspended_buildings();
         }

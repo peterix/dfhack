@@ -317,7 +317,7 @@ static void listScripts(PluginManager *plug_mgr, std::map<string,string> &pset, 
                 pset[key] = help;
             }
         }
-        else if (all && !files[i].empty() && files[i][0] != '.' && files[i] != "internal")
+        else if (all && !files[i].empty() && files[i][0] != '.' && files[i] != "internal" && files[i] != "test")
         {
             listScripts(plug_mgr, pset, path+files[i]+"/", all, prefix+files[i]+"/");
         }
@@ -1186,7 +1186,13 @@ command_result Core::runCommand(color_ostream &con, const std::string &first_, v
                     force = true;
             }
             if (!Lua::Interrupt(force))
-                con.printerr("Failed to register hook - use 'kill-lua force' to force\n");
+            {
+                con.printerr(
+                    "Failed to register hook. This can happen if you have"
+                    " lua profiling or coverage monitoring enabled. Use"
+                    " 'kill-lua force' to force, but this may disable"
+                    " profiling and coverage monitoring.\n");
+            }
         }
         else if (builtin == "script")
         {
@@ -1618,7 +1624,10 @@ bool Core::Init()
         freopen("stderr.log", "w", stderr);
     #endif
 
-    fprintf(stderr, "DFHack build: %s\n", Version::git_description());
+    Filesystem::init();
+
+    cerr << "DFHack build: " << Version::git_description() << "\n"
+         << "Starting with working directory: " << Filesystem::getcwd() << endl;
 
     // find out what we are...
     #ifdef LINUX_BUILD
