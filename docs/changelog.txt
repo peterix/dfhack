@@ -33,6 +33,9 @@ changelog.txt uses a syntax similar to RST, with a few special sequences:
 
 # Future
 
+## New Plugins
+- `dig-now`: instantly completes dig designations for soil, rock, and mineral tiles
+
 ## Fixes
 - `buildingplan`: fixed an issue where planned constructions designated with DF's sizing keys (``umkh``) would sometimes be larger than requested
 - `buildingplan`: fixed an issue preventing other plugins like `automaterial` from planning constructions if the "enable all" buildingplan setting was turned on
@@ -52,10 +55,14 @@ changelog.txt uses a syntax similar to RST, with a few special sequences:
 
 ## Lua
 - ``gui.Painter``: fixed error when calling ``viewport()`` method
+- `reveal`: now exposes ``unhideFlood(pos)`` functionality to Lua
 - ``utils.processArgsGetopt()``: now returns negative numbers (e.g. ``-10``) in the list of positional parameters instead of treating it as an option string equivalent to ``-1 -0``
 - ``utils.processArgsGetopt()``: now properly handles ``--`` like GNU ``getopt`` as a marker to treat all further parameters as non-options
 - ``utils.processArgsGetopt()``: now detects when required arguments to long-form options are missing
 - `xlsxreader`: added Lua class wrappers for the xlsxreader plugin API
+
+## API
+- Added ``dfhack.units.teleport(unit, pos)``
 
 ## Documentation
 - Added more client library implementations to the `remote interface docs <remote-client-libs>`

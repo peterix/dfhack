@@ -195,7 +195,7 @@ the visible part of the map is scanned.
 
 Options:
 
-:all:   Scan the whole map, as if it was revealed.
+:all:   Scan the whole map, as if it were revealed.
 :value: Show material value in the output. Most useful for gems.
 :hell:  Show the Z range of HFS tubes. Implies 'all'.
 
@@ -2586,8 +2586,6 @@ Subcommands:
               (e.g. TOWER_CAP). The cursor must be located on a dirt or grass floor tile.
 :grow:        Turns saplings into trees; under the cursor if a sapling is selected,
               or every sapling on the map if the cursor is hidden.
-:extirpate:   Kills the tree or shrub under the cursor, instantly turning them to ashes.
-:immolate:    Sets the plants on fire instead. The fires can and *will* spread ;)
 
 For mass effects, use one of the additional options:
 
@@ -2818,6 +2816,69 @@ Options:
 :item:      Subsequent items will be stored inside the currently selected item.
 :building:  Subsequent items will become part of the currently selected building.
             Good for loading traps; do not use with workshops (or deconstruct to use the item).
+
+.. _dig-now:
+
+dig-now
+=======
+
+Instantly completes non-marker dig designations, modifying tile shapes and
+creating boulders, ores, and gems as if a miner were doing the mining or
+engraving. By default, the entire map is processed and boulder generation
+follows standard game rules, but the behavior is configurable.
+
+Note that no units will get mining or engraving experience for the dug/engraved
+tiles.
+
+Trees and roots are not currently handled by this plugin and will be skipped.
+Requests for engravings are also skipped since they would depend on the skill
+and creative choices of individual engravers. Other types of engraving (i.e.
+smoothing and track carving) are handled.
+
+Usage::
+
+    dig-now [<pos> <pos>] [<options>]
+
+Where the optional ``<pos>`` pair can be used to specify the coordinate bounds
+within which ``dig-now`` will operate. If they are not specified, ``dig-now``
+will scan the entire map.
+
+Any ``<pos>`` parameters can either be an ``<x>,<y>,<z>`` triple (e.g.
+``35,12,150``) or the string ``here``, which means the position of the active
+game cursor should be used.
+
+Examples:
+
+``dig-now``
+    Dig designated tiles according to standard game rules.
+
+``dig-now --clean``
+    Dig designated tiles, but don't generate any boulders, ores, or gems.
+
+``dig-now --dump here``
+    Dig tiles and dump all generated boulders, ores, and gems at the tile under
+    the game cursor.
+
+Options:
+
+:``-c``, ``--clean``:
+    Don't generate any boulders, ores, or gems. Equivalent to
+    ``--percentages 0,0,0,0``.
+:``-d``, ``--dump <pos>``:
+    Dump any generated items at the specified coordinates. If the tile at those
+    coordinates is open space or is a wall, items will be generated on the
+    closest walkable tile below.
+:``-e``, ``--everywhere``:
+    Generate a boulder, ore, or gem for every tile that can produce one.
+    Equivalent to ``--percentages 100,100,100,100``.
+:``-h``, ``--help``:
+    Show quick usage help text.
+:``-p``, ``--percentages <layer>,<vein>,<small cluster>,<deep>``:
+    Set item generation percentages for each of the tile categories. The
+    ``vein`` category includes both the large oval clusters and the long stringy
+    mineral veins. Default is ``25,33,100,100``.
+:``-z``, ``--cur-zlevel``:
+    Restricts the bounds to the currently visible z-level.
 
 .. _diggingInvaders:
 
