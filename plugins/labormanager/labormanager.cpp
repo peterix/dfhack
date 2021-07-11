@@ -593,6 +593,23 @@ static void setOptionEnabled(ConfigFlags flag, bool on)
         config.ival(0) &= ~flag;
 }
 
+static df::unit_labor get_ignore_marker()
+{
+    if (!config.isValid())
+        return df::unit_labor::NONE;
+    return static_cast<df::unit_labor>(config.ival(1));
+}
+
+static bool is_ignore_marker_set()
+{
+    return config.isValid() && get_ignore_marker() != df::unit_labor::NONE;
+}
+
+static void set_ignore_marker(df::unit_labor ignore_marker)
+{
+    config.ival(1) = static_cast<int>(ignore_marker);
+}
+
 static void cleanup_state()
 {
     enable_labormanager = false;
@@ -610,7 +627,10 @@ static void init_state()
 {
     config = World::GetPersistentData("labormanager/2.0/config");
     if (config.isValid() && config.ival(0) == -1)
+    {
         config.ival(0) = 0;
+        config.ival(1) = df::unit_labor::NONE;
+    }
 
     enable_labormanager = isOptionEnabled(CF_ENABLED);
 
@@ -827,6 +847,7 @@ static void enable_plugin(color_ostream &out)
     {
         config = World::AddPersistentData("labormanager/2.0/config");
         config.ival(0) = 0;
+        config.ival(1) = df::unit_labor::NONE;
     }
 
     setOptionEnabled(CF_ENABLED, true);
@@ -864,6 +885,10 @@ DFhackCExport command_result plugin_init(color_ostream &out, std::vector <Plugin
         "    Change the assignment priority of a labor (default is 100)\n"
         "  labormanager reset <labor>\n"
         "    Return a labor to the default handling.\n"
+        "  labormanager ignoremarker <labor>\n"
+        "    Ignore any dwarves that have this labor enabled.\n"
+        "  labormanager ignoremarker none\n"
+        "    Disable the ignore marker.\n"
         "  labormanager reset-all\n"
         "    Return all labors to the default handling.\n"
         "  labormanager list\n"
@@ -1216,7 +1241,8 @@ private:
                 (Units::isActive(cre)) &&
                 (!cre->flags2.bits.visitor) &&
                 (!cre->flags3.bits.ghostly) &&
-                (ENUM_ATTR(profession, can_assign_labor, cre->profession));
+                (ENUM_ATTR(profession, can_assign_labor, cre->profession)) &&
+                (!is_ignore_marker_set() || !cre->status.labors[get_ignore_marker()]);
 
             if (isAssignable)
             {
@@ -2355,6 +2381,26 @@ command_result labormanager(color_ostream &out, std::vector <std::string> & para
         print_labor(labor, out);
         return CR_OK;
     }
+    else if (parameters.size() == 2 && parameters[0] == "ignoremarker")
+    {
+        if (!enable_labormanager)
+        {
+            out << "Error: The plugin is not enabled." << endl;
+            return CR_FAILURE;
+        }
+
+        df::unit_labor labor = lookup_labor_by_name(parameters[1]);
+
+        if (labor == df::unit_labor::NONE)
+        {
+            out.printerr("Could not find labor %s.\n", parameters[0].c_str());
+            return CR_WRONG_USAGE;
+        }
+
+        set_ignore_marker(labor);
+
+        return CR_OK;
+    }
     else if (parameters.size() == 1 && (parameters[0] == "allow-fishing" || parameters[0] == "forbid-fishing"))
     {
         if (!enable_labormanager)
@@ -2400,6 +2446,7 @@ command_result labormanager(color_ostream &out, std::vector <std::string> & para
             return CR_FAILURE;
         }
 
+
         bool need_comma = 0;
         for (int i = 0; i < NUM_STATE; i++)
         {
@@ -2421,6 +2468,12 @@ command_result labormanager(color_ostream &out, std::vector <std::string> & para
 
                 print_labor(labor, out);
             }
+        }
+
+        if (is_ignore_marker_set())
+        {
+            string labor_name = ENUM_KEY_STR(unit_labor, get_ignore_marker());
+            out << "Ignoring all dwarves with labor " << labor_name << " enabled." << endl;
         }
 
         return CR_OK;
